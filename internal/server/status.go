@@ -116,7 +116,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		in.Mail = m
 	}
 
-	out := s.overviewData(ctx, env)
+	out := s.overviewData(ctx, env, r.Host)
 	out["summary"] = status.Compute(in)
 	writeJSON(w, http.StatusOK, out)
 }

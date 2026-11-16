@@ -40,11 +40,26 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "cannot read mesh .env: "+err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, s.overviewData(r.Context(), env))
+	writeJSON(w, http.StatusOK, s.overviewData(r.Context(), env, r.Host))
+}
+
+// siblingHost names another platform page of this box in the form the console was
+// reached on: <name>.<domain> from mesh-console.<domain>, <name>-<domain> otherwise
+// (the dash form, which every box serves).
+func siblingHost(reqHost, name, domain string) string {
+	h := strings.ToLower(reqHost)
+	if i := strings.LastIndexByte(h, ':'); i >= 0 && !strings.Contains(h[i:], "]") {
+		h = h[:i]
+	}
+	d := strings.ToLower(domain)
+	if d != "" && strings.HasSuffix(h, "."+d) {
+		return name + "." + domain
+	}
+	return name + "-" + domain
 }
 
 // overviewData is who this box is and where its pages live.
-func (s *Server) overviewData(ctx context.Context, env meshenv.Env) map[string]any {
+func (s *Server) overviewData(ctx context.Context, env meshenv.Env, reqHost string) map[string]any {
 	domain := env.Get("DOMAIN")
 	ipDash := env.Get("PUBLIC_IP_DASH")
 	if ipDash == "" && env.Get("PUBLIC_IP") != "" {
@@ -52,7 +67,7 @@ func (s *Server) overviewData(ctx context.Context, env meshenv.Env) map[string]a
 	}
 	_, domainName, serverDomain, idErr := s.identity(ctx, env)
 
-	l := links{Root: "https://" + domain, Maison: "https://maison-" + domain}
+	l := links{Root: "https://" + domain, Maison: "https://" + siblingHost(reqHost, "maison", domain)}
 	if serverDomain != "" {
 		l.Dashboard = "https://" + serverDomain + "/dashboard"
 	}
