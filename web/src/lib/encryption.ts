@@ -7,19 +7,19 @@
 //                                 fallback *.<user>.<zone> (ZeroSSL first)
 //   apex   <user>.<zone>         like dot while the box holds a trusted certificate,
 //                                 else terminated with the gateway's *.<zone>
-//   dash   <app>-<user>.<zone>   terminated by Cloudflare (before the cutoff) or the
-//                                 gateway (after), re-encrypted to the box with cert0
+//   dash   <app>-<user>.<zone>   terminated by the gateway with its *.<zone>,
+//                                 re-encrypted to the box with cert0
 //   sslip  <app>-<ip>.sslip.io   box's Let's Encrypt certificate (HTTP-01), direct
 //
-// IP names (<app>-<ip>.ip.<zone>) and the hop name (<user>.box.<zone>) are not
-// browser addresses: they are the inside leg of a dash name, signed by the Mesh
-// Router CA, and appear here only as that leg.
+// The hop name (<user>.box.<zone>) is not a browser address: it is the inside leg
+// of a name the gateway terminates, signed by the Mesh Router CA, and appears here
+// only as that leg.
 import type { Certificates, OutsideProbe } from './api'
 
 /** Who holds the key of the certificate that ends this leg, which sets its colour. */
 export type LegKind =
   | 'box' // a browser-trusted certificate whose key is on the box
-  | 'operator' // a browser-trusted certificate whose key the mesh holds (Cloudflare, gateway)
+  | 'operator' // a browser-trusted certificate whose key the mesh holds (the gateway)
   | 'mesh' // the Mesh Router CA (cert0): private, only the mesh's machines trust it
 
 export interface Leg {
@@ -62,12 +62,10 @@ export function caName(issuer: string | undefined, fallback: string): string {
   if (!issuer) return fallback
   if (/zerossl/i.test(issuer)) return 'ZeroSSL'
   if (/let'?s\s*encrypt/i.test(issuer)) return "Let's Encrypt"
-  if (/google trust/i.test(issuer)) return 'Google Trust Services'
   return issuer
 }
 
 const BOX: Node = { name: 'Your box', reads: true, box: true }
-const CLOUDFLARE: Node = { name: 'Cloudflare', reads: true }
 const GATEWAY: Node = { name: 'Mesh gateway', reads: true }
 
 export function buildPaths(d: Certificates): Path[] {
@@ -81,23 +79,15 @@ export function buildPaths(d: Certificates): Path[] {
   const dashSeen = d.outside?.find((o) => o.kind === 'dash')
   const dotSeen = d.outside?.find((o) => o.kind === 'dot')
   const apexSeen = d.outside?.find((o) => o.kind === 'apex')
-  // Before the cutoff Cloudflare holds the dash names; the outside handshake says
-  // which side answers today.
-  const cutoff = dashSeen?.holder === 'gateway'
-  // The gateway's own *.<zone> CA, as seen on a name it terminates (unknown before the cutoff
-  // unless the apex shows it).
+  // The gateway's own *.<zone> CA, as seen on a name it terminates.
   const gatewayCA = caName(
-    cutoff ? dashSeen?.issuer : apexSeen?.holder === 'gateway' ? apexSeen.issuer : undefined,
+    dashSeen?.holder === 'gateway' ? dashSeen.issuer : apexSeen?.holder === 'gateway' ? apexSeen.issuer : undefined,
     'Public CA',
   )
   const gatewayZoneLeg: Leg = { kind: 'operator', ca: gatewayCA, detail: `*.${zone} · key on the mesh gateway` }
-  const workerDirect = r?.worker.mode === 'direct'
   const tunnel = r?.gateway.mode === 'tunnel'
   const offline = r?.mode === 'offline'
   const hopName = d.meshCert?.hopName || `${user}.box.${zone}`
-  // The Worker's name for the box: <app>-<ip>.<IP_ZONE>, or <ip>.<IP_ZONE> for the apex.
-  const ipName = (app: string) =>
-    `${app ? app + '-' : ''}${d.ipDash || '<ip>'}.${d.ipZone || 'ip.<zone>'}`
   const offlineNote = 'The mesh holds no live route to your box right now, so this address does not answer.'
 
   const boxLE = (name: string, how: string): Leg => ({
@@ -115,41 +105,10 @@ export function buildPaths(d: Certificates): Path[] {
   const gatewayHop = meshHop(hopName, 'The gateway accepts only a Mesh Router CA certificate for this name.')
 
   // A name the mesh terminates: dash names, and the apex without a box certificate.
-  function terminated(app: string): { legs: Path['legs']; who: string } {
-    if (cutoff) {
-      return {
-        who: 'the mesh gateway',
-        legs: [
-          { leg: gatewayZoneLeg, to: GATEWAY },
-          { leg: gatewayHop, to: BOX },
-        ],
-      }
-    }
-    const edge: Leg = { kind: 'operator', ca: 'Cloudflare edge', detail: `*.${zone} · key at Cloudflare` }
-    if (workerDirect) {
-      return {
-        who: 'Cloudflare',
-        legs: [
-          { leg: edge, to: CLOUDFLARE },
-          {
-            leg: {
-              ...meshHop(ipName(app), 'Not checked: Cloudflare runs in SSL mode "Full", not strict.'),
-              tunnel: false,
-            },
-            to: BOX,
-          },
-        ],
-      }
-    }
-    return {
-      who: 'Cloudflare, then the mesh gateway',
-      legs: [
-        { leg: edge, to: CLOUDFLARE },
-        { leg: { kind: 'operator', ca: 'Gateway certificate', detail: 'Cloudflare → mesh gateway' }, to: GATEWAY },
-        { leg: gatewayHop, to: BOX },
-      ],
-    }
-  }
+  const terminated: Path['legs'] = [
+    { leg: gatewayZoneLeg, to: GATEWAY },
+    { leg: gatewayHop, to: BOX },
+  ]
 
   const paths: Path[] = []
 
@@ -225,20 +184,15 @@ export function buildPaths(d: Certificates): Path[] {
       p.notes.push(
         `Passed through by policy: the gateway's own *.${zone} also matches this name, so it could decrypt it. It does not while your box holds a trusted certificate.`,
       )
-    } else if (delegated) {
-      p.legs = [
-        { leg: gatewayZoneLeg, to: GATEWAY },
-        { leg: gatewayHop, to: BOX },
-      ]
+    } else {
+      p.legs = terminated
       p.verdict = 'split'
       p.verdictText = 'Decrypted by the mesh gateway'
-      p.notes.push('Your box has no trusted certificate for it yet, so the gateway terminates it with its own.')
-    } else {
-      const t = terminated('')
-      p.legs = t.legs
-      p.verdict = 'split'
-      p.verdictText = `Decrypted by ${t.who}`
-      p.notes.push('Until your domain is delegated it works like a dash name.')
+      p.notes.push(
+        delegated
+          ? 'Your box has no trusted certificate for it yet, so the gateway terminates it with its own.'
+          : 'Until your domain is delegated it works like a dash name.',
+      )
     }
     if (offline) p.notes.push(offlineNote)
     paths.push(p)
@@ -246,21 +200,14 @@ export function buildPaths(d: Certificates): Path[] {
 
   // ---- dash -----------------------------------------------------------------
   {
-    const t = terminated(exampleApp)
     const p: Path = {
       form: 'dash',
       label: 'Dash name',
       host: `${exampleApp}-${user}.${zone}`,
       verdict: 'split',
-      verdictText: `Decrypted by ${t.who}`,
-      legs: t.legs,
-      notes: [
-        cutoff
-          ? 'The mesh gateway reads this traffic, then re-encrypts it to your box.'
-          : workerDirect
-            ? "Cloudflare reads this traffic, then its Worker re-encrypts it straight to your box's IP name."
-            : 'Cloudflare reads this traffic and hands it to the mesh gateway, which reads it too and re-encrypts it to your box.',
-      ],
+      verdictText: 'Decrypted by the mesh gateway',
+      legs: terminated,
+      notes: ['The mesh gateway reads this traffic, then re-encrypts it to your box.'],
       seen: dashSeen,
     }
     if (offline) p.notes.push(offlineNote)

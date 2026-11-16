@@ -66,7 +66,7 @@ type Cert struct {
 
 // AgentCert reads the certificate mesh-router-agent obtained from the backend
 // (data/certs/cert.pem, shared with Caddy as the gateway_tls cert). It is what
-// the gateway and CF worker verify when they connect to this box directly.
+// the gateway verifies when it connects to this box.
 func AgentCert(meshDir string) (*Cert, error) {
 	b, err := os.ReadFile(filepath.Join(meshDir, "data", "certs", "cert.pem"))
 	if err != nil {

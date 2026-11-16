@@ -3,12 +3,13 @@
 //
 // Phase 1.1 rule (mesh-router-nameserver docs/phase-1.1-gateway-tls.md): one key
 // per name.
-//   - dash names (<app>-<domain>) end TLS at Cloudflare / the gateway; the box
+//   - dash names (<app>-<domain>) end TLS at the gateway; the box
 //     answers the gateway's hop with cert0 (mesh CA, <label>.box.<zone>);
 //   - dot names (<app>.<domain>) and the apex end TLS on the box: a Let's Encrypt
 //     certificate by DNS-01 once the zone is delegated (zone.go);
 //   - sslip.io names: Let's Encrypt by HTTP-01, on the box;
-//   - IP names (<ip>.<IP_ZONE>): cert0, for the Worker, not for browsers.
+//   - IP names (<ip>.<IP_ZONE>): cert0, for the gateway's agent route, not for
+//     browsers.
 //
 // Only names whose certificate the box itself obtains (sslip, dot, apex) are
 // probed: a local handshake on a dash or IP name always returns cert0, which is
@@ -63,7 +64,7 @@ type Kind string
 
 const (
 	KindSslip Kind = "sslip" // <x>.sslip.io: Let's Encrypt by HTTP-01, key on the box
-	KindDash  Kind = "dash"  // <app>-<domain>: TLS ends at Cloudflare / the gateway
+	KindDash  Kind = "dash"  // <app>-<domain>: TLS ends at the gateway
 	KindDot   Kind = "dot"   // <app>.<domain>: the box's DNS-01 wildcard
 	KindApex  Kind = "apex"  // <domain>
 	KindIP    Kind = "ip"    // under IP_ZONE: cert0 (mesh CA)

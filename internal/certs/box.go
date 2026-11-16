@@ -8,7 +8,7 @@ import (
 
 // Box is the certificate Caddy serves on the box's own domain, as a browser
 // reaching the box directly would see it. Today that is the mesh CA cert
-// (gateway_tls): only the gateway and the CF worker trust it, so TLS for the
+// (gateway_tls): only the gateway trusts it, so TLS for the
 // public is terminated there. A Let's Encrypt wildcard for *.<domain> can only
 // have come from a DNS-01 challenge (the nameserver's acme-dns API), and is
 // what would let the box serve the public directly.

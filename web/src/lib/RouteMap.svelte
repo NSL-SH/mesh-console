@@ -29,7 +29,7 @@
   } = $props()
 
   type LaneId = Exclude<Lane, 'unknown'>
-  type Entry = 'box' | 'cloudflare' | 'gateway'
+  type Entry = 'box' | 'gateway'
   type State = 'observed' | 'inferred' | 'idle' | 'unavailable'
 
   // The traced names are mesh-console.<domain> and mesh-console-<domain>.
@@ -47,22 +47,18 @@
   const inZone = (host: string) => host === domain || host.endsWith('.' + domain)
 
   // What the backend's registry implies for a name. Names in the box's own zone
-  // follow the nameserver's answer when the zone is delegated; everything else is
-  // read as going through the Cloudflare worker, which also honours the owner's
-  // "through the gateway" choice. The trace is the truth; this is the fallback.
+  // follow the nameserver's answer when the zone is delegated; everything else
+  // (the dash names in the server's zone) answers the gateways, which pick the
+  // route. The trace is the truth; this is the fallback.
   function inferLane(host: string): LaneId | null {
     const s = routing.state
     if (!s) return null
     const d = routing.dns
-    if (inZone(host) && zoneLive) return d!.answer === 'direct' ? 'box-direct' : gatewayLane(s.gateway.mode)
-    if (d?.force === 'gateway') return gatewayLane(s.gateway.mode)
-    if (s.worker.mode === 'direct') return 'edge-direct'
+    if (inZone(host) && zoneLive && d!.answer === 'direct') return 'box-direct'
     return gatewayLane(s.gateway.mode)
   }
-  function inferEntry(host: string, lane: LaneId): Entry {
-    if (lane === 'box-direct') return 'box'
-    if (lane === 'edge-direct') return 'cloudflare'
-    return inZone(host) && zoneLive ? 'gateway' : 'cloudflare'
+  function inferEntry(lane: LaneId): Entry {
+    return lane === 'box-direct' ? 'box' : 'gateway'
   }
 
   const dnsDirect = $derived(
@@ -79,10 +75,6 @@
         if (!d?.delegated) return 'your zone is not delegated to the mesh nameservers'
         if (!d.live) return 'the delegation is not live yet'
         if (routing.boxCert && routing.boxCert.kind !== 'letsencrypt') return 'the box has no publicly trusted certificate yet'
-        return undefined
-      case 'edge-direct':
-        if (!routing.routes?.some((r) => r.source === 'agent' && r.type === 'domain' && r.domain))
-          return 'no direct route the Cloudflare worker can use'
         return undefined
       case 'gateway-agent':
         return s && !s.hasAgent ? 'no direct route registered (behind NAT, or the backend could not validate it)' : undefined
@@ -138,23 +130,18 @@
                 'Back to automatic: your names answer this box directly when it serves them with a trusted certificate, the gateway otherwise.',
             }
           : undefined
-      case 'edge-direct':
-        return undefined
     }
   }
 
   // ---- the graph -------------------------------------------------------------
   // Columns follow the traffic; rows separate the ways through. The box spans
-  // rows 0-3 and every way in arrives on its own row.
+  // rows 0-2 and every way in arrives on its own row.
 
-  type NodeId = 'in' | 'dns' | 'worker' | 'gateway' | 'agent' | 'tunnel' | 'box' | 'out'
+  type NodeId = 'in' | 'dns' | 'gateway' | 'agent' | 'tunnel' | 'box' | 'out'
   type EdgeId =
     | 'in-dns'
     | 'dns-box'
-    | 'dns-worker'
     | 'dns-gateway'
-    | 'worker-box'
-    | 'worker-gateway'
     | 'gateway-agent'
     | 'gateway-tunnel'
     | 'agent-box'
@@ -162,34 +149,29 @@
     | 'box-out'
 
   const NODES: { id: NodeId; col: number; row: number; label: string; sub: string }[] = [
-    { id: 'in', col: 0, row: 1.5, label: 'Internet', sub: 'visitors' },
-    { id: 'dns', col: 1, row: 1.5, label: 'DNS', sub: 'your names' },
-    { id: 'worker', col: 2, row: 1, label: 'Cloudflare', sub: 'worker' },
-    { id: 'gateway', col: 3, row: 2, label: 'Gateway', sub: 'mesh edge' },
-    { id: 'agent', col: 4, row: 2, label: 'Public IP', sub: 'agent route' },
-    { id: 'tunnel', col: 4, row: 3, label: 'Tunnel', sub: 'WireGuard' },
-    { id: 'box', col: 5, row: 1.5, label: 'This box', sub: 'Caddy → apps' },
-    { id: 'out', col: 6, row: 1.5, label: 'Internet', sub: 'outgoing' },
+    { id: 'in', col: 0, row: 1, label: 'Internet', sub: 'visitors' },
+    { id: 'dns', col: 1, row: 1, label: 'DNS', sub: 'your names' },
+    { id: 'gateway', col: 2, row: 1, label: 'Gateway', sub: 'mesh edge' },
+    { id: 'agent', col: 3, row: 1, label: 'Public IP', sub: 'agent route' },
+    { id: 'tunnel', col: 3, row: 2, label: 'Tunnel', sub: 'WireGuard' },
+    { id: 'box', col: 4, row: 1, label: 'This box', sub: 'Caddy → apps' },
+    { id: 'out', col: 5, row: 1, label: 'Internet', sub: 'outgoing' },
   ]
   // `row` is where the edge arrives on the box (its own lane), else the target's row.
   const EDGES: { id: EdgeId; from: NodeId; to: NodeId; row?: number; label?: string }[] = [
     { id: 'in-dns', from: 'in', to: 'dns' },
     { id: 'dns-box', from: 'dns', to: 'box', row: 0, label: 'answers this box' },
-    { id: 'dns-worker', from: 'dns', to: 'worker' },
     { id: 'dns-gateway', from: 'dns', to: 'gateway', label: 'answers the gateway' },
-    { id: 'worker-box', from: 'worker', to: 'box', row: 1, label: 'by name' },
-    { id: 'worker-gateway', from: 'worker', to: 'gateway' },
     { id: 'gateway-agent', from: 'gateway', to: 'agent' },
     { id: 'gateway-tunnel', from: 'gateway', to: 'tunnel' },
-    { id: 'agent-box', from: 'agent', to: 'box', row: 2 },
-    { id: 'tunnel-box', from: 'tunnel', to: 'box', row: 3 },
+    { id: 'agent-box', from: 'agent', to: 'box', row: 1 },
+    { id: 'tunnel-box', from: 'tunnel', to: 'box', row: 2 },
     { id: 'box-out', from: 'box', to: 'out' },
   ]
 
-  function pathEdges(lane: LaneId, entry: Entry): EdgeId[] {
+  function pathEdges(lane: LaneId): EdgeId[] {
     if (lane === 'box-direct') return ['in-dns', 'dns-box']
-    if (lane === 'edge-direct') return ['in-dns', 'dns-worker', 'worker-box']
-    const head: EdgeId[] = entry === 'gateway' ? ['in-dns', 'dns-gateway'] : ['in-dns', 'dns-worker', 'worker-gateway']
+    const head: EdgeId[] = ['in-dns', 'dns-gateway']
     return lane === 'gateway-agent' ? [...head, 'gateway-agent', 'agent-box'] : [...head, 'gateway-tunnel', 'tunnel-box']
   }
 
@@ -210,13 +192,12 @@
       if (t && usable(t)) {
         const lane = t.lane as LaneId
         const entry = t.entry as Entry
-        out.push({ host, state: 'observed', lane, entry, edges: pathEdges(lane, entry), trace: t })
+        out.push({ host, state: 'observed', lane, entry, edges: pathEdges(lane), trace: t })
         continue
       }
       const lane = inferLane(host)
       if (lane) {
-        const entry = inferEntry(host, lane)
-        out.push({ host, state: 'inferred', lane, entry, edges: pathEdges(lane, entry), trace: t })
+        out.push({ host, state: 'inferred', lane, entry: inferEntry(lane), edges: pathEdges(lane), trace: t })
       }
     }
     return out
@@ -227,9 +208,6 @@
     const b: Partial<Record<EdgeId, string>> = {}
     const direct = unavailable('box-direct')
     if (direct) b['dns-box'] = direct
-    if (!zoneLive) b['dns-gateway'] = unavailable('box-direct') ?? 'your zone is not delegated'
-    const edge = unavailable('edge-direct')
-    if (edge) b['worker-box'] = edge
     const agent = unavailable('gateway-agent')
     if (agent) b['gateway-agent'] = b['agent-box'] = agent
     const tunnel = unavailable('gateway-tunnel')
@@ -298,15 +276,15 @@
   const A = (col: number) => G.pad + G.sa / 2 + col * G.step
   const C = (row: number) => G.pad + G.sc / 2 + row * G.lane
   const xy = (a: number, c: number) => (vertical ? { x: c, y: a } : { x: a, y: c })
-  const viewW = $derived(vertical ? 2 * G.pad + 3 * G.lane + G.sc : 2 * G.pad + 6 * G.step + G.sa)
-  const viewH = $derived(vertical ? 2 * G.pad + 6 * G.step + G.sa : 2 * G.pad + 3 * G.lane + G.sc)
+  const viewW = $derived(vertical ? 2 * G.pad + 2 * G.lane + G.sc : 2 * G.pad + 5 * G.step + G.sa)
+  const viewH = $derived(vertical ? 2 * G.pad + 5 * G.step + G.sa : 2 * G.pad + 2 * G.lane + G.sc)
 
   function nodeRect(id: NodeId) {
     const n = node(id)
     if (id === 'box') {
       const p = xy(A(n.col) - G.sa / 2, C(0) - G.sc / 2)
       const along = G.sa
-      const across = 3 * G.lane + G.sc
+      const across = 2 * G.lane + G.sc
       return vertical ? { ...p, w: across, h: along } : { ...p, w: along, h: across }
     }
     const p = xy(A(n.col) - G.sa / 2, C(n.row) - G.sc / 2)
@@ -337,15 +315,6 @@
     return { d, lx: l.x, ly: l.y }
   }
 
-  // The worker's way to the box, as it reported it (ip-dns, sslip.io, …).
-  function edgeLabel(g: Graph, e: (typeof EDGES)[number]): string | undefined {
-    if (e.id === 'worker-box') {
-      const hp = g.path?.lane === 'edge-direct' ? g.path : undefined
-      const hops = hp?.trace?.hops.filter((h) => h !== 'owner-force') ?? []
-      return hops.length ? hops.join(' → ') : e.label
-    }
-    return e.label
-  }
 
   // ---- interaction -------------------------------------------------------------
 
@@ -378,14 +347,10 @@
   // ---- words -------------------------------------------------------------------
 
   function pathWords(h: HostPath): string {
-    const start = h.entry === 'box' ? 'DNS answers this box' : h.entry === 'gateway' ? 'DNS answers the gateway' : 'Cloudflare worker'
+    const start = h.entry === 'box' ? 'DNS answers this box' : 'DNS answers the gateway'
     switch (h.lane) {
       case 'box-direct':
         return `${start} → this box`
-      case 'edge-direct': {
-        const hops = h.trace?.hops.filter((x) => x !== 'owner-force') ?? []
-        return `${start} → ${hops.length ? hops.join(' → ') : 'by name'} → this box`
-      }
       case 'gateway-agent':
         return `${start} → gateway → public IP → this box`
       case 'gateway-tunnel':
@@ -394,7 +359,7 @@
   }
 
   // Where the trace and the registry disagree. Expected for about a minute after a
-  // switch: DNS answers live 30 s, the worker caches routes 60 s.
+  // switch: DNS answers live 30 s, the gateways cache routes too.
   const mismatches = $derived(
     hostPaths
       .filter((h) => h.state === 'observed')
@@ -406,7 +371,6 @@
     (
       [
         ['Direct from DNS', edgeBlocked['dns-box']],
-        ['Worker by name', edgeBlocked['worker-box']],
         ['Public IP', edgeBlocked['gateway-agent']],
         ['Tunnel', edgeBlocked['gateway-tunnel']],
       ] as [string, string | undefined][]
@@ -415,7 +379,6 @@
 
   const laneName: Record<LaneId, string> = {
     'box-direct': 'directly to this box',
-    'edge-direct': 'the Cloudflare worker, by name',
     'gateway-agent': 'the gateway, to the public IP',
     'gateway-tunnel': 'the gateway, through the tunnel',
   }
@@ -438,7 +401,7 @@
           ? `publicly trusted wildcard (*.${c.domain}), so browsers can reach the box directly`
           : 'publicly trusted certificate for the box domain'
       case 'mesh-ca':
-        return 'signed by the mesh CA: only the gateway and the Cloudflare worker trust it'
+        return 'signed by the mesh CA: only the gateway trusts it'
       case 'other':
         return `issued by ${c.issuer ?? 'an unknown CA'}`
       default:
@@ -447,7 +410,7 @@
   }
   // Who answers the TCP handshake, so what the ping measures.
   function pingTarget(t: Trace): string {
-    return t.entry === 'box' ? 'this box' : t.entry === 'cloudflare' ? 'a Cloudflare edge' : t.entry === 'gateway' ? 'the gateway' : 'the address it reached'
+    return t.entry === 'box' ? 'this box' : t.entry === 'gateway' ? 'the gateway' : 'the address it reached'
   }
   function errorRate(s: TraceStats): string {
     const all = s.count + s.errors
@@ -472,10 +435,9 @@
 
 {#snippet edgeBody(g: Graph, e: (typeof EDGES)[number])}
   {@const geo = edgeGeom(e)}
-  {@const label = edgeLabel(g, e)}
   <path class="e {g.edge[e.id]}" class:sel={isSel(g, e.id)} d={geo.d} marker-end="url(#rm-arrow-{g.edge[e.id]})" />
-  {#if label}
-    <text class="el {g.edge[e.id]}" x={geo.lx} y={geo.ly + 4} text-anchor="middle">{label}</text>
+  {#if e.label}
+    <text class="el {g.edge[e.id]}" x={geo.lx} y={geo.ly + 4} text-anchor="middle">{e.label}</text>
   {/if}
 {/snippet}
 
@@ -625,7 +587,7 @@
     {#each mismatches as m (m.h.host)}
       <li>
         <span class="mono">{m.h.host}</span> goes through {laneName[m.h.lane]}, while the routes point at
-        {laneName[m.want as LaneId]}. Expected for about a minute after a switch (DNS and the worker cache their answers).
+        {laneName[m.want as LaneId]}. Expected for about a minute after a switch (DNS and the gateways cache their answers).
       </li>
     {/each}
   </ul>

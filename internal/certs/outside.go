@@ -15,9 +15,8 @@ import (
 type Holder string
 
 const (
-	HolderCloudflare Holder = "cloudflare" // Cloudflare's edge (dash names before the cutoff)
-	// HolderGateway: the mesh gateway, with its own *.<zone> (dash names after the
-	// cutoff, the apex while the box has no trusted certificate) or its fallback
+	// HolderGateway: the mesh gateway, with its own *.<zone> (dash names, the
+	// apex while the box has no trusted certificate) or its fallback
 	// *.<user>.<zone> (dot names while the box has none, phase-1.1-gateway-tls.md §6.3)
 	HolderGateway Holder = "gateway"
 	HolderBox     Holder = "box" // this box's own Let's Encrypt certificate
@@ -40,22 +39,15 @@ type Outside struct {
 	Error    string `json:"error,omitempty"`
 }
 
-// Cloudflare's edge certificates come from several CAs (Google Trust Services,
-// Let's Encrypt, SSL.com) and say so nowhere in the issuer; the leaf is
-// recognised by its Cloudflare issuer when there is one, else by its SANs.
-// The CA alone tells nothing: the gateways order from ZeroSSL first and Let's
-// Encrypt as a backup, and Cloudflare uses Let's Encrypt too.
-var cloudflareIssuer = regexp.MustCompile(`(?i)cloudflare`)
-
 // The Mesh Router CA (cert0): never a browser certificate, so never a holder.
 var meshCAIssuer = regexp.MustCompile(`(?i)mesh router`)
 
 // HolderOf decides who holds the key of leaf, served on host of kind k.
 // serverDomain is the mesh zone (nsl.sh).
 //
-//   - *.<zone> on a dash name or the apex: Cloudflare's edge when it also names
-//     the zone apex (Universal SSL always does), else the gateway's own
-//     (lego orders *.<zone> alone).
+//   - *.<zone> on a dash name or the apex: the gateway's own. The CA alone
+//     tells nothing: the gateways order from ZeroSSL first and Let's Encrypt as
+//     a backup.
 //   - a certificate naming host itself (*.<user>.<zone>, <user>.<zone>): the
 //     box's when Let's Encrypt issued it (boxes order nowhere else), else the
 //     gateway's fallback (ZeroSSL). The gateway's Let's Encrypt backup looks like
@@ -66,22 +58,15 @@ func HolderOf(leaf *x509.Certificate, k Kind, host, serverDomain string) Holder 
 		return HolderUnknown
 	}
 	issuer := leaf.Issuer.CommonName + " " + strings.Join(leaf.Issuer.Organization, " ")
-	if cloudflareIssuer.MatchString(issuer) {
-		return HolderCloudflare
-	}
 	if meshCAIssuer.MatchString(issuer) {
 		return HolderUnknown
 	}
-	zoneWide, zoneApex := false, false
+	zoneWide := false
 	for _, n := range leaf.DNSNames {
 		zoneWide = zoneWide || strings.EqualFold(n, "*."+serverDomain)
-		zoneApex = zoneApex || strings.EqualFold(n, serverDomain)
 	}
 	switch {
 	case zoneWide && (k == KindDash || k == KindApex):
-		if zoneApex {
-			return HolderCloudflare
-		}
 		return HolderGateway
 	case zoneWide:
 		return HolderUnknown // *.<zone> covers one label: not a dot name's

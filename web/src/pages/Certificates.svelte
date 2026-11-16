@@ -89,9 +89,6 @@
   const paths = $derived(data ? buildPaths(data) : [])
   const zoneLive = $derived(data?.zone?.state === 'ok' || data?.zone?.state === 'overdue')
   const dashExample = $derived(data?.domainName && data?.serverDomain ? `app-${data.domainName}.${data.serverDomain}` : 'app-<you>.<zone>')
-  const dashHolder = $derived(
-    data?.outside?.find((o) => o.kind === 'dash')?.holder === 'gateway' ? 'the mesh gateway' : 'Cloudflare',
-  )
 
   // ---- addresses -----------------------------------------------------------
   // IP names are the mesh's inside leg, not addresses to open: left to Mesh internals.
@@ -121,7 +118,7 @@
   function unprobedNote(k: NameKind): string {
     switch (k) {
       case 'dash':
-        return `Certificate held by ${dashHolder}`
+        return 'Certificate held by the mesh gateway'
       case 'dot':
       case 'apex':
         return 'Usable in a browser once your domain is delegated'
@@ -294,7 +291,7 @@
             Your box obtains {counts.total} certificate{counts.total === 1 ? '' : 's'} itself:
             {counts.letsencrypt} on Let's Encrypt{#if counts.fallback}, {counts.fallback} on a fallback{/if}{#if counts.unreachable}, {counts.unreachable} with none{/if}.
           {/if}
-          Dash names carry {dashHolder}'s certificate{zoneLive ? '' : '; dot names wait for the delegation'}.
+          Dash names carry the mesh gateway's certificate{zoneLive ? '' : '; dot names wait for the delegation'}.
           {#if !data.sslipRoutes}Apps get no sslip.io address on this box (SSLIP_ROUTES=off).{/if}
         </p>
         <ul class="rows">
@@ -372,7 +369,7 @@
           {@const m = data.meshCert}
           <p class="subtle small intro">
             Signed by the Mesh Router CA, a private authority only the mesh's machines trust. It ends the inside leg of a
-            dash name: the mesh gateway connects to your box's name below, Cloudflare's Worker to its IP names. Browsers
+            dash name: the mesh gateway connects to your box's name below. Browsers
             never see it.
           </p>
           <dl class="kv">

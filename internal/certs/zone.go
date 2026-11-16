@@ -11,7 +11,7 @@ type ZoneState string
 
 const (
 	// The zone is not delegated: the apex is served with cert0 (only the
-	// gateway and the Worker trust it) and the dot names with Caddy's internal
+	// gateway trusts it) and the dot names with Caddy's internal
 	// wildcard. Dot names cannot be used in a browser.
 	ZoneNotDelegated ZoneState = "not-delegated"
 	// Delegated per the backend, but Caddy has not switched to the DNS-01

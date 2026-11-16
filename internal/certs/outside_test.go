@@ -22,13 +22,9 @@ func TestHolderOf(t *testing.T) {
 		host string
 		want Holder
 	}{
-		{"cloudflare issuer", mk("Cloudflare, Inc.", "Cloudflare Inc ECC CA-3", "nsl.sh", "*.nsl.sh"), KindDash, dash, HolderCloudflare},
-		{"edge cert from Google Trust Services", mk("Google Trust Services", "WE1", "nsl.sh", "*.nsl.sh"), KindDash, dash, HolderCloudflare},
-		{"edge cert from LE carries the apex", mk("Let's Encrypt", "E7", "nsl.sh", "*.nsl.sh"), KindDash, dash, HolderCloudflare},
 		{"gateway's own *.zone (LE backup)", mk("Let's Encrypt", "E7", "*.nsl.sh"), KindDash, dash, HolderGateway},
 		{"gateway's own *.zone (ZeroSSL)", mk("ZeroSSL GmbH", "ZeroSSL ECC DV SSL CA 2", "*.nsl.sh"), KindDash, dash, HolderGateway},
 		{"apex terminated by the gateway", mk("ZeroSSL GmbH", "ZeroSSL ECC DV SSL CA 2", "*.nsl.sh"), KindApex, apex, HolderGateway},
-		{"apex through Cloudflare (not delegated)", mk("Google Trust Services", "WE1", "nsl.sh", "*.nsl.sh"), KindApex, apex, HolderCloudflare},
 		{"box wildcard on a dot name", mk("Let's Encrypt", "R11", "*.alice.nsl.sh"), KindDot, dot, HolderBox},
 		{"box apex", mk("Let's Encrypt", "R11", "alice.nsl.sh"), KindApex, apex, HolderBox},
 		{"gateway fallback on a dot name", mk("ZeroSSL GmbH", "ZeroSSL ECC DV SSL CA 2", "*.alice.nsl.sh"), KindDot, dot, HolderGateway},

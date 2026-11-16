@@ -17,7 +17,7 @@
 
   function seenText(o: OutsideProbe): string {
     if (!o.holder) return `No answer${o.error ? ': ' + o.error : ''}`
-    const who = o.holder === 'cloudflare' ? 'Cloudflare' : o.holder === 'gateway' ? 'the mesh gateway' : o.holder === 'box' ? 'your box' : 'unknown'
+    const who = o.holder === 'gateway' ? 'the mesh gateway' : o.holder === 'box' ? 'your box' : 'unknown'
     return `Checked from the internet: certificate held by ${who}${o.issuer ? ', issued by ' + o.issuer : ''}${o.verified ? '' : ', refused by a browser'}`
   }
 </script>
@@ -85,7 +85,7 @@
 <div class="legend small">
   <div><span class="swatch box"></span><b>Let's Encrypt, key on your box.</b> A browser trusts it, and only your box can decrypt.</div>
   <div>
-    <span class="swatch operator"></span><b>Key held by the mesh</b> (Cloudflare or the mesh gateway). A browser trusts it; the
+    <span class="swatch operator"></span><b>Key held by the mesh gateway.</b> A browser trusts it; the
     mesh decrypts there. For your dot names the gateway holds a fallback certificate, used only while your box has none of
     its own, so they never fail in the browser.
   </div>

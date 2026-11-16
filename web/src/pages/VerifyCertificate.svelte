@@ -45,7 +45,6 @@
 
   const holderLabel: Record<Holder, string> = {
     box: 'your box',
-    cloudflare: 'Cloudflare',
     gateway: 'the mesh gateway',
     unknown: 'an unknown party',
   }

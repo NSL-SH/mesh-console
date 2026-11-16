@@ -18,10 +18,9 @@ import (
 type Entry string
 
 const (
-	EntryBox        Entry = "box"        // the name answers this box's own IP
-	EntryCloudflare Entry = "cloudflare" // a Cloudflare edge, then the worker
-	EntryGateway    Entry = "gateway"    // the mesh gateway, answered by the nameserver
-	EntryUnknown    Entry = "unknown"
+	EntryBox     Entry = "box"     // the name answers this box's own IP
+	EntryGateway Entry = "gateway" // the mesh gateway, answered by the nameserver
+	EntryUnknown Entry = "unknown"
 )
 
 // Lane is the whole path, as the Diagnostics route map draws it.
@@ -29,7 +28,6 @@ type Lane string
 
 const (
 	LaneBoxDirect     Lane = "box-direct"     // straight to the box
-	LaneEdgeDirect    Lane = "edge-direct"    // worker → box by name (ip.<zone>, sslip.io)
 	LaneGatewayAgent  Lane = "gateway-agent"  // gateway → box's public IP (agent route)
 	LaneGatewayTunnel Lane = "gateway-tunnel" // gateway → WireGuard tunnel
 	LaneUnknown       Lane = "unknown"
@@ -42,10 +40,9 @@ type Trace struct {
 	Resolved  []string `json:"resolved"`
 	Connected string   `json:"connected,omitempty"`
 	Status    int      `json:"status,omitempty"`
-	// Route is X-Mesh-Route as returned (the worker and the gateway add it when
-	// the request carries X-Mesh-Trace); empty when nothing on the way did.
+	// Route is X-Mesh-Route as returned (the gateway adds it when the request
+	// carries X-Mesh-Trace); empty when nothing on the way did.
 	Route     []string  `json:"route,omitempty"`
-	CFRay     bool      `json:"cfRay"`
 	Entry     Entry     `json:"entry"`
 	Hops      []string  `json:"hops"`
 	Lane      Lane      `json:"lane"`
@@ -64,8 +61,8 @@ type Trace struct {
 }
 
 // Timing is one request's phases, in ms. Connect is the TCP handshake, so about
-// one network round trip to whatever answered the name (the box, a Cloudflare
-// edge, the gateway): the closest thing to a ping without ICMP.
+// one network round trip to whatever answered the name (the box or the
+// gateway): the closest thing to a ping without ICMP.
 type Timing struct {
 	DNS       float64 `json:"dns"`
 	Connect   float64 `json:"connect"`
@@ -140,7 +137,6 @@ func TraceHost(ctx context.Context, host string, boxIPs []string) Trace {
 	} else {
 		drain(resp)
 		t.Status = resp.StatusCode
-		t.CFRay = resp.Header.Get("Cf-Ray") != ""
 		t.Route = splitRoute(resp.Header.Get("X-Mesh-Route"))
 		t.Timing = &Timing{
 			DNS:       ms(dnsDone.Sub(start)),
@@ -150,7 +146,7 @@ func TraceHost(ctx context.Context, host string, boxIPs []string) Trace {
 			Total:     ms(time.Since(start)),
 		}
 	}
-	t.Entry, t.Hops, t.Lane = Classify(t.Connected, boxIPs, t.CFRay, t.Route)
+	t.Entry, t.Hops, t.Lane = Classify(t.Connected, boxIPs, t.Route)
 	if err != nil {
 		return t
 	}
@@ -223,40 +219,33 @@ func splitRoute(h string) []string {
 
 // Classify reads a trace the way the route map draws it. The box's Caddy adds no
 // X-Mesh-Route, so a direct connection is recognised by the IP it reached; the
-// worker reports its whole path (cf-worker,…,pcs) and the gateway alone reports
-// the route it took (agent,pcs / tunnel,pcs).
-func Classify(connected string, boxIPs []string, cfRay bool, route []string) (Entry, []string, Lane) {
+// gateway reports the route it took (agent,pcs / tunnel,pcs / tunnel-routed,pcs,
+// prefixed with handoff or retry,handoff when it handed the request to the
+// gateway that holds the box's tunnel).
+func Classify(connected string, boxIPs []string, route []string) (Entry, []string, Lane) {
 	hops := []string{}
 	for _, h := range route {
-		if h != "cf-worker" && h != "pcs" {
+		if h != "pcs" {
 			hops = append(hops, h)
 		}
 	}
 	switch {
 	case connected != "" && slices.Contains(boxIPs, connected):
 		return EntryBox, []string{}, LaneBoxDirect
-	case cfRay || (len(route) > 0 && route[0] == "cf-worker"):
-		return EntryCloudflare, hops, laneOf(hops, true)
 	case len(hops) > 0:
-		return EntryGateway, hops, laneOf(hops, false)
+		return EntryGateway, hops, laneOf(hops)
 	default:
 		return EntryUnknown, hops, LaneUnknown
 	}
 }
 
-// laneOf picks the lane from the hops. Through the worker, anything that is not
-// the gateway is the worker reaching the box by name.
-func laneOf(hops []string, viaWorker bool) Lane {
-	gateway := !viaWorker || slices.Contains(hops, "gateway") || slices.Contains(hops, "gateway-fallback")
+// laneOf picks the gateway's way to the box from the hops.
+func laneOf(hops []string) Lane {
 	switch {
-	case gateway && slices.Contains(hops, "tunnel"):
+	case slices.Contains(hops, "tunnel") || slices.Contains(hops, "tunnel-routed"):
 		return LaneGatewayTunnel
-	case gateway && (slices.Contains(hops, "agent") || slices.Contains(hops, "direct")):
+	case slices.Contains(hops, "agent"):
 		return LaneGatewayAgent
-	case gateway:
-		return LaneUnknown
-	case len(hops) > 0:
-		return LaneEdgeDirect
 	default:
 		return LaneUnknown
 	}

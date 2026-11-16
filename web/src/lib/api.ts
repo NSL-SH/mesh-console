@@ -84,7 +84,7 @@ export interface Pick {
 }
 
 export interface Routing {
-  state: { mode: Mode; gateway: Pick; worker: Pick; hasAgent: boolean; hasTunnel: boolean } | null
+  state: { mode: Mode; gateway: Pick; hasAgent: boolean; hasTunnel: boolean } | null
   routes?: Route[]
   routesTtl?: number
   lastSeenOnline?: string | null
@@ -100,7 +100,7 @@ export interface Routing {
 }
 
 // Lanes of the Diagnostics route map (internal/probe/trace.go).
-export type Lane = 'box-direct' | 'edge-direct' | 'gateway-agent' | 'gateway-tunnel' | 'unknown'
+export type Lane = 'box-direct' | 'gateway-agent' | 'gateway-tunnel' | 'unknown'
 
 // A request to one of the box's public names, made from the box the way a
 // visitor makes it (internal/probe/trace.go TraceHost).
@@ -110,8 +110,7 @@ export interface Trace {
   connected?: string
   status?: number
   route?: string[]
-  cfRay: boolean
-  entry: 'box' | 'cloudflare' | 'gateway' | 'unknown'
+  entry: 'box' | 'gateway' | 'unknown'
   hops: string[]
   lane: Lane
   error?: string
@@ -441,7 +440,7 @@ export interface Caa {
   error?: string
 }
 
-export type Holder = 'cloudflare' | 'gateway' | 'box' | 'unknown'
+export type Holder = 'gateway' | 'box' | 'unknown'
 
 export interface OutsideProbe {
   host: string
@@ -489,7 +488,7 @@ export interface Certificates {
   ipZone?: string
   /** the box's public IP, dashed; empty: no public IP known */
   ipDash?: string
-  /** which path the Worker and the gateway take to the box (internal/routing) */
+  /** which path the gateway takes to the box (internal/routing) */
   routing?: Routing['state']
   sslipRoutes: boolean
   domain?: string

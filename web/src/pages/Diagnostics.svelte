@@ -373,12 +373,6 @@
             <Pill tone={modeTone(routing.state.mode)}>{modeLabel[routing.state.mode]}</Pill>
             <span>{modeExplain(routing)}</span>
           </div>
-          {#if routing.state.worker.mode !== routing.state.gateway.mode}
-            <p class="muted small">
-              Cloudflare worker path: <strong>{modeLabel[routing.state.worker.mode]}</strong> — it only uses domain routes,
-              {routing.state.worker.mode === 'offline' ? 'and has none it may use here (none registered, or the tunnel ranks first), so it hands requests to the gateway.' : 'so it picks differently.'}
-            </p>
-          {/if}
           <p class="subtle small">
             As the gateways see it: the lowest-priority route wins, there is no failover.
             Routes expire in {routing.routesTtl !== undefined && routing.routesTtl > 0 ? `${routing.routesTtl}s` : '—'} unless refreshed; last registration {ago(routing.lastSeenOnline)}.

@@ -71,7 +71,7 @@ func (s *Server) handleCertificates(w http.ResponseWriter, r *http.Request) {
 			zone.ApexPassthrough = &trusted
 		}
 		zone.Live = &live
-		// Which path the Worker and the gateway take to the box: the second leg
+		// Which path the gateway takes to the box: the second leg
 		// of a dash name (Encryption paths on the page).
 		out["routing"] = routing.Infer(res.Routes, res.RoutesTTL)
 	case idErr != nil:

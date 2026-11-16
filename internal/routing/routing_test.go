@@ -19,43 +19,43 @@ func TestInfer(t *testing.T) {
 		name          string
 		routes        []backend.Route
 		ttl           int
-		mode, gw, cfw Mode
+		mode, gw     Mode
 	}{
-		{"nothing registered", nil, -2, ModeOffline, ModeOffline, ModeOffline},
-		{"agent and tunnel", []backend.Route{tunnel("https"), tunnel("http"), agentDomain("https"), agentDomain("http")}, 500, ModeDirect, ModeDirect, ModeDirect},
-		{"tunnel only", []backend.Route{tunnel("https"), tunnel("http")}, 500, ModeTunnel, ModeTunnel, ModeOffline},
-		{"agent only", []backend.Route{agentDomain("https")}, 500, ModeDirect, ModeDirect, ModeDirect},
+		{"nothing registered", nil, -2, ModeOffline, ModeOffline},
+		{"agent and tunnel", []backend.Route{tunnel("https"), tunnel("http"), agentDomain("https"), agentDomain("http")}, 500, ModeDirect, ModeDirect},
+		{"tunnel only", []backend.Route{tunnel("https"), tunnel("http")}, 500, ModeTunnel, ModeTunnel},
+		{"agent only", []backend.Route{agentDomain("https")}, 500, ModeDirect, ModeDirect},
 		{
-			"agent ip route: nginx direct, worker falls to tunnel domain-less = offline",
+			"agent ip route wins over the tunnel",
 			[]backend.Route{{IP: "203.0.113.5", Port: 443, Priority: 1, Source: "agent", Type: "ip"}, tunnel("https")},
-			500, ModeDirect, ModeDirect, ModeOffline,
+			500, ModeDirect, ModeDirect,
 		},
 		{
-			"agent demoted below the tunnel (forced tunnel): tunnel wins, the worker defers to the gateway",
+			"agent demoted below the tunnel (forced tunnel): tunnel wins",
 			[]backend.Route{tunnel("https"), func() backend.Route { r := agentDomain("https"); r.Priority = 3; return r }()},
-			500, ModeTunnel, ModeTunnel, ModeOffline,
+			500, ModeTunnel, ModeTunnel,
 		},
 		{
-			"a tie keeps the worker on the domain route",
+			"a tie keeps the first registered route",
 			[]backend.Route{tunnel("https"), func() backend.Route { r := agentDomain("https"); r.Priority = 2; return r }()},
-			500, ModeTunnel, ModeTunnel, ModeDirect,
+			500, ModeTunnel, ModeTunnel,
 		},
 		{
 			"missing priority sorts last",
 			[]backend.Route{{Source: "agent", Scheme: "https", Type: "domain", Domain: "x.ip.nsl.sh"}, tunnel("https")},
-			500, ModeTunnel, ModeTunnel, ModeDirect,
+			500, ModeTunnel, ModeTunnel,
 		},
 		{
 			"no scheme match falls back to all routes",
 			[]backend.Route{tunnel("http")},
-			500, ModeTunnel, ModeTunnel, ModeOffline,
+			500, ModeTunnel, ModeTunnel,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := Infer(tc.routes, tc.ttl)
-			if s.Mode != tc.mode || s.Gateway.Mode != tc.gw || s.Worker.Mode != tc.cfw {
-				t.Fatalf("got mode=%s gateway=%s worker=%s, want %s/%s/%s", s.Mode, s.Gateway.Mode, s.Worker.Mode, tc.mode, tc.gw, tc.cfw)
+			if s.Mode != tc.mode || s.Gateway.Mode != tc.gw {
+				t.Fatalf("got mode=%s gateway=%s, want %s/%s", s.Mode, s.Gateway.Mode, tc.mode, tc.gw)
 			}
 		})
 	}

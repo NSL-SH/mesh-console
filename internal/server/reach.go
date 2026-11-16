@@ -244,7 +244,7 @@ func (h traceHistory) summarize(t *probe.Trace) {
 // traceHosts are the names traced, fixed by DOMAIN and never taken from the
 // request: this page under both of its names. mesh-console.<domain> is in the
 // box's own zone (the nameserver answers it), mesh-console-<domain> is in the
-// server's zone (Cloudflare, then the worker).
+// server's zone (the nameserver answers the gateways).
 func traceHosts(domain string) []string {
 	return []string{"mesh-console." + domain, "mesh-console-" + domain}
 }
