@@ -110,21 +110,41 @@ services:
 }
 
 func TestChannel(t *testing.T) {
+	const fork = "https://github.com/someone/mesh-router-template-root"
 	for _, c := range []struct {
 		url  string
 		auto bool
+		repo string
 		want string
 	}{
-		{"", true, "stable"},
-		{DefaultUpdateURL, true, "stable"},
-		{DevUpdateURL, true, "dev"},
-		{"https://github.com/yundera/mesh-router-template-root/archive/refs/heads/feat.tar.gz", true, "custom"},
-		{"file:///root/mesh-test/t.tar.gz", true, "custom"},
-		{DevUpdateURL, false, "local"},
+		{"", true, "", "stable"},
+		{DefaultUpdateURL, true, "", "stable"},
+		{DevUpdateURL, true, "", "dev"},
+		{"https://github.com/yundera/mesh-router-template-root/archive/refs/heads/feat.tar.gz", true, "", "custom"},
+		{"file:///root/mesh-test/t.tar.gz", true, "", "custom"},
+		{DevUpdateURL, false, "", "local"},
+		// Either org names a published channel, whatever MESH_REPO_URL says, so
+		// the badge holds while boxes move between them.
+		{"https://github.com/nsl-sh/mesh-router-template-root/archive/refs/heads/stable.tar.gz", true, "", "stable"},
+		{"https://github.com/NSL-SH/mesh-router-template-root/archive/refs/heads/main.tar.gz", true, "", "dev"},
+		{DefaultUpdateURL, true, "https://github.com/nsl-sh/mesh-router-template-root", "stable"},
+		// A configured fork's branches are channels too; unconfigured they are not.
+		{fork + "/archive/refs/heads/stable.tar.gz", true, fork + "/", "stable"},
+		{fork + "/archive/refs/heads/stable.tar.gz", true, "", "custom"},
 	} {
-		if got := Channel(c.url, c.auto); got != c.want {
-			t.Errorf("Channel(%q, %v) = %q, want %q", c.url, c.auto, got, c.want)
+		if got := Channel(c.url, c.auto, c.repo); got != c.want {
+			t.Errorf("Channel(%q, %v, %q) = %q, want %q", c.url, c.auto, c.repo, got, c.want)
 		}
+	}
+}
+
+func TestChannelURL(t *testing.T) {
+	if got, want := ChannelURL("", "stable"), DefaultUpdateURL; got != want {
+		t.Errorf("ChannelURL default = %q, want %q", got, want)
+	}
+	if got, want := ChannelURL("https://github.com/nsl-sh/mesh-router-template-root.git", "main"),
+		"https://github.com/nsl-sh/mesh-router-template-root/archive/refs/heads/main.tar.gz"; got != want {
+		t.Errorf("ChannelURL = %q, want %q", got, want)
 	}
 }
 

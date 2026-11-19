@@ -256,10 +256,10 @@ func (s *Server) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	refresh := r.URL.Query().Get("refresh") == "1"
 	out, _ := s.gatherUpdate(r.Context(), env, refresh)
-	out["channel"] = update.Channel(env.Get("UPDATE_URL", "MESH_TEMPLATE_URL"), update.AutoUpdateEnabled(env.Get("MESH_AUTO_UPDATE")))
+	out["channel"] = update.Channel(env.Get("UPDATE_URL", "MESH_TEMPLATE_URL"), update.AutoUpdateEnabled(env.Get("MESH_AUTO_UPDATE")), env.Get("MESH_REPO_URL"))
 	out["channelEditable"], out["channelBlocked"] = s.channelEditable(env)
 	if _, managed := out["managedBy"]; !managed {
-		out["channels"] = s.publishedChannels(r.Context(), refresh)
+		out["channels"] = s.publishedChannels(r.Context(), update.RepoURL(env.Get("MESH_REPO_URL")), refresh)
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -271,11 +271,11 @@ type channelHead struct {
 	LatestError string         `json:"latestError,omitempty"`
 }
 
-// publishedChannels is the head of each published branch, so the picker can
-// say what switching would install. Both go through the hour-long GitHub cache.
-func (s *Server) publishedChannels(ctx context.Context, refresh bool) []channelHead {
+// publishedChannels is the head of each published branch of repo, so the picker
+// can say what switching would install. Both go through the hour-long GitHub cache.
+func (s *Server) publishedChannels(ctx context.Context, repo string, refresh bool) []channelHead {
 	var out []channelHead
-	for _, c := range []struct{ id, url string }{{"stable", update.DefaultUpdateURL}, {"dev", update.DevUpdateURL}} {
+	for _, c := range []struct{ id, url string }{{"stable", update.ChannelURL(repo, "stable")}, {"dev", update.ChannelURL(repo, "main")}} {
 		h := channelHead{ID: c.id, URL: c.url}
 		if repo, ok := update.ParseRepo(c.url); ok {
 			if l, err := s.github.Latest(ctx, repo, refresh); err != nil {

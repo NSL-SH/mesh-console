@@ -23,25 +23,58 @@ import (
 	"time"
 )
 
+// DefaultRepoURL mirrors MESH_REPO_URL_DEFAULT in scripts/library/common.sh: the
+// repo a channel name expands to when the mesh .env sets no MESH_REPO_URL.
+const DefaultRepoURL = "https://github.com/yundera/mesh-router-template-root"
+
+// KnownRepoURLs are the addresses this template has been published under. A
+// branch tarball of any of them still names a published channel, so the badge
+// does not turn "custom" while boxes move from one org to the other.
+var KnownRepoURLs = []string{
+	"https://github.com/nsl-sh/mesh-router-template-root",
+	DefaultRepoURL,
+}
+
 // DefaultUpdateURL mirrors mesh_template_url() in scripts/library/common.sh.
-const DefaultUpdateURL = "https://github.com/yundera/mesh-router-template-root/archive/refs/heads/stable.tar.gz"
+var DefaultUpdateURL = ChannelURL(DefaultRepoURL, "stable")
 
 // DevUpdateURL is the main branch: what tools/set-update-channel.sh writes for
 // the "dev" channel.
-const DevUpdateURL = "https://github.com/yundera/mesh-router-template-root/archive/refs/heads/main.tar.gz"
+var DevUpdateURL = ChannelURL(DefaultRepoURL, "main")
+
+// RepoURL is the configured repo (MESH_REPO_URL in the mesh .env), else the default.
+func RepoURL(configured string) string {
+	u := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(configured), "/"), ".git")
+	if u == "" {
+		return DefaultRepoURL
+	}
+	return u
+}
+
+// ChannelURL is the branch tarball of repo.
+func ChannelURL(repo, branch string) string {
+	return RepoURL(repo) + "/archive/refs/heads/" + branch + ".tar.gz"
+}
 
 // Channel names the update source the way the channel picker shows it: "local"
 // when downloads are off (whatever UPDATE_URL says), "stable"/"dev" for the two
-// published branches, "custom" for anything else.
-func Channel(updateURL string, autoUpdate bool) string {
+// published branches of the configured repo or of any known one, "custom" for
+// anything else.
+func Channel(updateURL string, autoUpdate bool, repoURL string) string {
 	if !autoUpdate {
 		return "local"
 	}
-	switch u := strings.TrimSpace(updateURL); {
-	case u == "" || strings.EqualFold(u, DefaultUpdateURL):
+	u := strings.TrimSpace(updateURL)
+	if u == "" {
 		return "stable"
-	case strings.EqualFold(u, DevUpdateURL):
-		return "dev"
+	}
+	for _, r := range append([]string{RepoURL(repoURL)}, KnownRepoURLs...) {
+		switch {
+		case strings.EqualFold(u, ChannelURL(r, "stable")):
+			return "stable"
+		case strings.EqualFold(u, ChannelURL(r, "main")):
+			return "dev"
+		}
 	}
 	return "custom"
 }
