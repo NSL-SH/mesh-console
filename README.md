@@ -1,7 +1,7 @@
 # mesh-console
 
 The local status and control page of a FOSS mesh box (installed from
-[mesh-router-template-root](https://github.com/Yundera/mesh-router-template-root)).
+[mesh-router-template-root](https://github.com/NSL-SH/mesh-router-template-root)).
 Served at `mesh-console-${DOMAIN}`, behind an AppShield gate, admins only.
 
 | Page | Shows | Acts |
@@ -130,6 +130,6 @@ machine you develop on.
 
 ## Release
 
-GitHub Actions publishes `ghcr.io/yundera/mesh-console` (amd64 + arm64) on pushes to
+GitHub Actions publishes `ghcr.io/nsl-sh/mesh-console` (amd64 + arm64) on pushes to
 `main` and on `v*` tags. Bump by tagging (`v1.0.1` → `:1.0.1`), then move the pin in the
 template's `docker-compose.yml`.

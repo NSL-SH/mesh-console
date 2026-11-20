@@ -25,14 +25,15 @@ import (
 
 // DefaultRepoURL mirrors MESH_REPO_URL_DEFAULT in scripts/library/common.sh: the
 // repo a channel name expands to when the mesh .env sets no MESH_REPO_URL.
-const DefaultRepoURL = "https://github.com/yundera/mesh-router-template-root"
+const DefaultRepoURL = "https://github.com/nsl-sh/mesh-router-template-root"
 
 // KnownRepoURLs are the addresses this template has been published under. A
 // branch tarball of any of them still names a published channel, so the badge
-// does not turn "custom" while boxes move from one org to the other.
+// does not turn "custom" on a box still on the old org (moved to NSL-SH
+// 2026-11-20; GitHub redirects the Yundera URLs).
 var KnownRepoURLs = []string{
-	"https://github.com/nsl-sh/mesh-router-template-root",
 	DefaultRepoURL,
+	"https://github.com/yundera/mesh-router-template-root",
 }
 
 // DefaultUpdateURL mirrors mesh_template_url() in scripts/library/common.sh.

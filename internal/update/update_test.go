@@ -15,7 +15,7 @@ func TestParseRepo(t *testing.T) {
 		repo Repo
 		ok   bool
 	}{
-		"": {Repo{"yundera", "mesh-router-template-root", "stable"}, true},
+		"": {Repo{"nsl-sh", "mesh-router-template-root", "stable"}, true},
 		"https://github.com/yundera/mesh-router-template-root/archive/refs/heads/main.tar.gz": {Repo{"yundera", "mesh-router-template-root", "main"}, true},
 		"https://github.com/me/fork/archive/refs/heads/feat/x.tar.gz":                         {Repo{"me", "fork", "feat/x"}, true},
 		"https://codeload.github.com/yundera/mesh-router-template-root/tar.gz/refs/heads/dev": {Repo{"yundera", "mesh-router-template-root", "dev"}, true},
@@ -68,7 +68,7 @@ func TestGitHubLatestCaches(t *testing.T) {
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
-		if r.URL.Path != "/repos/yundera/mesh-router-template-root/commits/stable" {
+		if r.URL.Path != "/repos/nsl-sh/mesh-router-template-root/commits/stable" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		w.Write([]byte(`{"sha":"abc","commit":{"message":"fix: thing\n\nbody","committer":{"date":"2026-09-29T00:00:00Z"}}}`))
@@ -128,6 +128,9 @@ func TestChannel(t *testing.T) {
 		{"https://github.com/nsl-sh/mesh-router-template-root/archive/refs/heads/stable.tar.gz", true, "", "stable"},
 		{"https://github.com/NSL-SH/mesh-router-template-root/archive/refs/heads/main.tar.gz", true, "", "dev"},
 		{DefaultUpdateURL, true, "https://github.com/nsl-sh/mesh-router-template-root", "stable"},
+		{"https://github.com/yundera/mesh-router-template-root/archive/refs/heads/stable.tar.gz", true, "", "stable"},
+		{"https://github.com/Yundera/mesh-router-template-root/archive/refs/heads/main.tar.gz", true, "", "dev"},
+		{"https://github.com/yundera/mesh-router-template-root/archive/refs/heads/stable.tar.gz", true, "https://github.com/yundera/mesh-router-template-root", "stable"},
 		// A configured fork's branches are channels too; unconfigured they are not.
 		{fork + "/archive/refs/heads/stable.tar.gz", true, fork + "/", "stable"},
 		{fork + "/archive/refs/heads/stable.tar.gz", true, "", "custom"},
