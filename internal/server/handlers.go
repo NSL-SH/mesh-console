@@ -587,21 +587,19 @@ func (s *Server) handleSetDefaultApp(w http.ResponseWriter, r *http.Request) {
 }
 
 // primaryForm is the form of the box's primary app names (the template's
-// MESH_PRIMARY_FORM): the owner's setting, the form in effect and whether the box can
-// serve the dot form (both derived by the template's self-check).
+// MESH_PRIMARY_FORM, dot when unset): the owner's setting and the form in effect
+// (derived by the template's self-check).
 type primaryForm struct {
 	Setting  string `json:"setting"`
 	Active   string `json:"active"`
-	DotReady bool   `json:"dotReady"`
 	Editable bool   `json:"editable"`
 	Blocked  string `json:"blocked,omitempty"`
 }
 
 func (s *Server) primaryFormState(env meshenv.Env) primaryForm {
 	f := primaryForm{
-		Setting:  orDefault(env.Get("MESH_PRIMARY_FORM"), "dash"),
+		Setting:  orDefault(env.Get("MESH_PRIMARY_FORM"), "dot"),
 		Active:   orDefault(env.Get("PRIMARY_FORM_ACTIVE"), "dash"),
-		DotReady: env.Get("DOT_FORM_READY") == "1",
 	}
 	if s.templateHasTool(hostverb.SetPrimaryFormTool) {
 		f.Editable = true
@@ -639,9 +637,6 @@ func (s *Server) handleSetPrimaryForm(w http.ResponseWriter, r *http.Request) {
 	case 0:
 	case hostverb.ExitBusy:
 		writeError(w, http.StatusConflict, "a self-check is running on this box - try again once it has finished")
-		return
-	case hostverb.ExitDotNotReady:
-		writeError(w, http.StatusConflict, "this box cannot serve the dot form yet: its zone is not delegated to the mesh nameservers, or Caddy has no wildcard certificate for it")
 		return
 	default:
 		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "the change was not applied", "result": res})

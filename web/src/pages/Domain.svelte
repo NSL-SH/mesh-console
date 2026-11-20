@@ -130,9 +130,9 @@
     <Card title="App addresses">
       <p class="muted small">
         Every app answers on both <code>&lt;app&gt;-{info?.domain}</code> and <code>&lt;app&gt;.{info?.domain}</code>.
-        This picks the one Maison opens and gives the apps as their own address. The dot form needs this box's
-        domain to be served by the mesh nameservers, with its certificate issued. Platform pages (this console,
-        Maison's sign-in) keep their dash addresses.
+        This picks the one Maison opens and gives the apps as their own address: the dot form by default. The dash
+        form is deprecated and will be phased out. Platform pages (this console, Maison's sign-in) keep their dash
+        addresses.
       </p>
       <div class="choices">
         <button class:primary={pf.active === 'dash'} onclick={() => setForm('dash')}
@@ -140,22 +140,12 @@
           {formSaving === 'dash' ? 'Applying…' : `app-${info?.domain}`}
         </button>
         <button class:primary={pf.active === 'dot'} onclick={() => setForm('dot')}
-          disabled={!pf.editable || formSaving !== null || pf.setting === 'dot' || !pf.dotReady}>
+          disabled={!pf.editable || formSaving !== null || pf.setting === 'dot'}>
           {formSaving === 'dot' ? 'Applying…' : `app.${info?.domain}`}
         </button>
       </div>
       {#if !pf.editable}
         <p class="small">Changing it from here is {pf.blocked ?? 'disabled on this box'}.</p>
-      {:else if pf.setting === 'dot' && pf.active !== 'dot'}
-        <p class="small warn-text">
-          The dot form is chosen but not in effect: this box cannot serve it right now (its domain is not served by the
-          mesh nameservers, or the certificate is missing). Apps stay on their dash addresses until it can.
-        </p>
-      {:else if !pf.dotReady}
-        <p class="subtle small">
-          The dot form becomes available once this box's domain is served by the mesh nameservers and its certificate
-          is issued.
-        </p>
       {/if}
       {#if formResult}
         <p>

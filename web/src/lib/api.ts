@@ -239,10 +239,8 @@ export interface SelfCheck {
 export interface PrimaryForm {
   /** the owner's choice */
   setting: 'dash' | 'dot'
-  /** the form in effect: dot only while the box serves it */
+  /** the form in effect */
   active: 'dash' | 'dot'
-  /** zone delegated to the mesh nameservers and wildcard certificate issued */
-  dotReady: boolean
   editable: boolean
   blocked?: string
 }
