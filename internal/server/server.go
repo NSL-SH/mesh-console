@@ -14,13 +14,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/yundera/mesh-console/internal/auth"
-	"github.com/yundera/mesh-console/internal/backend"
-	"github.com/yundera/mesh-console/internal/config"
-	"github.com/yundera/mesh-console/internal/dockerx"
-	"github.com/yundera/mesh-console/internal/mail"
-	"github.com/yundera/mesh-console/internal/meshenv"
-	"github.com/yundera/mesh-console/internal/update"
+	"github.com/nsl-sh/mesh-console/internal/auth"
+	"github.com/nsl-sh/mesh-console/internal/backend"
+	"github.com/nsl-sh/mesh-console/internal/config"
+	"github.com/nsl-sh/mesh-console/internal/dockerx"
+	"github.com/nsl-sh/mesh-console/internal/mail"
+	"github.com/nsl-sh/mesh-console/internal/meshenv"
+	"github.com/nsl-sh/mesh-console/internal/update"
 )
 
 // Version is set at build time (-ldflags "-X .../server.Version=...").

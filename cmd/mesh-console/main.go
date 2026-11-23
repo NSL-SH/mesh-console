@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/yundera/mesh-console/internal/config"
-	"github.com/yundera/mesh-console/internal/server"
-	"github.com/yundera/mesh-console/internal/ui"
+	"github.com/nsl-sh/mesh-console/internal/config"
+	"github.com/nsl-sh/mesh-console/internal/server"
+	"github.com/nsl-sh/mesh-console/internal/ui"
 )
 
 func main() {

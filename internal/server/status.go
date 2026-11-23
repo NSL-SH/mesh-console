@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yundera/mesh-console/internal/mail"
-	"github.com/yundera/mesh-console/internal/selfcheck"
-	"github.com/yundera/mesh-console/internal/status"
-	"github.com/yundera/mesh-console/internal/update"
+	"github.com/nsl-sh/mesh-console/internal/mail"
+	"github.com/nsl-sh/mesh-console/internal/selfcheck"
+	"github.com/nsl-sh/mesh-console/internal/status"
+	"github.com/nsl-sh/mesh-console/internal/update"
 )
 
 // ---- self-check state ----------------------------------------------------

@@ -14,7 +14,7 @@ package routing
 import (
 	"sort"
 
-	"github.com/yundera/mesh-console/internal/backend"
+	"github.com/nsl-sh/mesh-console/internal/backend"
 )
 
 type Mode string

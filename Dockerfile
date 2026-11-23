@@ -17,7 +17,7 @@ COPY . .
 COPY --from=ui /src/internal/ui/dist ./internal/ui/dist
 ARG BUILD_VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath \
-      -ldflags="-s -w -X github.com/yundera/mesh-console/internal/server.Version=${BUILD_VERSION}" \
+      -ldflags="-s -w -X github.com/nsl-sh/mesh-console/internal/server.Version=${BUILD_VERSION}" \
       -o /mesh-console ./cmd/mesh-console
 
 # 3) Runtime. The same image is also the host-verb runner (internal/dockerx

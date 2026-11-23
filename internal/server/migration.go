@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yundera/mesh-console/internal/dockerx"
-	"github.com/yundera/mesh-console/internal/hostverb"
-	"github.com/yundera/mesh-console/internal/selfcheck"
+	"github.com/nsl-sh/mesh-console/internal/dockerx"
+	"github.com/nsl-sh/mesh-console/internal/hostverb"
+	"github.com/nsl-sh/mesh-console/internal/selfcheck"
 )
 
 // ---- migration -----------------------------------------------------------

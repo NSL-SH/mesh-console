@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yundera/mesh-console/internal/hostverb"
-	"github.com/yundera/mesh-console/internal/meshenv"
+	"github.com/nsl-sh/mesh-console/internal/hostverb"
+	"github.com/nsl-sh/mesh-console/internal/meshenv"
 )
 
 // ---- usage reporting -------------------------------------------------------

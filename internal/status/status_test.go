@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yundera/mesh-console/internal/routing"
-	"github.com/yundera/mesh-console/internal/selfcheck"
-	"github.com/yundera/mesh-console/internal/update"
+	"github.com/nsl-sh/mesh-console/internal/routing"
+	"github.com/nsl-sh/mesh-console/internal/selfcheck"
+	"github.com/nsl-sh/mesh-console/internal/update"
 )
 
 var now = time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)

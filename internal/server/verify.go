@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yundera/mesh-console/internal/backend"
-	"github.com/yundera/mesh-console/internal/certs"
-	"github.com/yundera/mesh-console/internal/meshenv"
+	"github.com/nsl-sh/mesh-console/internal/backend"
+	"github.com/nsl-sh/mesh-console/internal/certs"
+	"github.com/nsl-sh/mesh-console/internal/meshenv"
 )
 
 // handleCertificateVerify backs the "Verify your certificate" page: which

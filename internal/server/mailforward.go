@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yundera/mesh-console/internal/backend"
+	"github.com/nsl-sh/mesh-console/internal/backend"
 )
 
 // ---- mail forwarding -------------------------------------------------------

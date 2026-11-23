@@ -3,7 +3,7 @@ package routing
 import (
 	"testing"
 
-	"github.com/yundera/mesh-console/internal/backend"
+	"github.com/nsl-sh/mesh-console/internal/backend"
 )
 
 func agentDomain(scheme string) backend.Route {

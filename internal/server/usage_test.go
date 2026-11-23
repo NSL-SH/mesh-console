@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yundera/mesh-console/internal/config"
-	"github.com/yundera/mesh-console/internal/meshenv"
+	"github.com/nsl-sh/mesh-console/internal/config"
+	"github.com/nsl-sh/mesh-console/internal/meshenv"
 )
 
 func usageServer(t *testing.T, withTool bool) (*Server, string) {

@@ -1,4 +1,4 @@
-module github.com/yundera/mesh-console
+module github.com/nsl-sh/mesh-console
 
 go 1.25.0
 

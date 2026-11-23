@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yundera/mesh-console/internal/routing"
-	"github.com/yundera/mesh-console/internal/selfcheck"
-	"github.com/yundera/mesh-console/internal/update"
+	"github.com/nsl-sh/mesh-console/internal/routing"
+	"github.com/nsl-sh/mesh-console/internal/selfcheck"
+	"github.com/nsl-sh/mesh-console/internal/update"
 )
 
 type Level string

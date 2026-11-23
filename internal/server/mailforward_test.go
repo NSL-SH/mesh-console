@@ -11,7 +11,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/yundera/mesh-console/internal/config"
+	"github.com/nsl-sh/mesh-console/internal/config"
 )
 
 func TestMailForwardRelaysSigned(t *testing.T) {

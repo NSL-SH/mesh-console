@@ -12,14 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yundera/mesh-console/internal/backend"
-	"github.com/yundera/mesh-console/internal/dockerx"
-	"github.com/yundera/mesh-console/internal/hostverb"
-	"github.com/yundera/mesh-console/internal/meshenv"
-	"github.com/yundera/mesh-console/internal/probe"
-	"github.com/yundera/mesh-console/internal/routing"
-	"github.com/yundera/mesh-console/internal/selfcheck"
-	"github.com/yundera/mesh-console/internal/update"
+	"github.com/nsl-sh/mesh-console/internal/backend"
+	"github.com/nsl-sh/mesh-console/internal/dockerx"
+	"github.com/nsl-sh/mesh-console/internal/hostverb"
+	"github.com/nsl-sh/mesh-console/internal/meshenv"
+	"github.com/nsl-sh/mesh-console/internal/probe"
+	"github.com/nsl-sh/mesh-console/internal/routing"
+	"github.com/nsl-sh/mesh-console/internal/selfcheck"
+	"github.com/nsl-sh/mesh-console/internal/update"
 )
 
 // ---- overview ------------------------------------------------------------
