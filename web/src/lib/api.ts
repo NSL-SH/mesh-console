@@ -563,3 +563,61 @@ export interface Preflight {
   target: string
   checks: PreflightCheck[]
 }
+
+// ---- guard (IP bans; the template's tools/guard.sh) ----------------------
+
+export interface GuardBan {
+  id: number
+  value: string
+  scope: 'Ip' | 'Range' | string
+  /** crowdsec = this box's detection, cscli = manual, nsl-* = imported fleet list */
+  origin: string
+  scenario: string
+  type: string
+  /** time left, Go duration ("3h59m12s") */
+  duration: string
+}
+
+export interface GuardAllowEntry {
+  value: string
+  description: string
+  created_at: string
+  /** null = for good */
+  expiration: string | null
+}
+
+export interface GuardSync {
+  listKey?: string
+  lastReport?: { at: string; sent: number; error?: string; ok: string }
+  lastImport?: {
+    at: string
+    generatedAt?: string
+    /** imported entries per origin (nsl-fleet, nsl-<list>) */
+    entries?: Record<string, number>
+    added: number
+    deleted: number
+    kept: number
+    allowlisted: number
+    error?: string
+    ok: string
+  }
+}
+
+export interface GuardStatus {
+  /** MESH_GUARD=on */
+  enabled: boolean
+  running: boolean
+  /** MESH_GUARD_REPORT / MESH_GUARD_IMPORT */
+  report: boolean
+  import: boolean
+  /** this box's own bans: detection (crowdsec) and manual (cscli) */
+  local: GuardBan[]
+  allowlists: { 'nsl-owner'?: GuardAllowEntry[]; 'nsl-sso'?: GuardAllowEntry[] }
+  sync: GuardSync | null
+}
+
+export interface GuardInfo {
+  available: boolean
+  blocked?: string
+  status?: GuardStatus
+}

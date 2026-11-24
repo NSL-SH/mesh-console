@@ -11,8 +11,10 @@ package hostverb
 import (
 	"errors"
 	"fmt"
+	"net/netip"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -282,4 +284,91 @@ func MigrateStart(scripts, target, statusURL string) (Verb, error) {
 // roll back.
 func MigrateCancel(scripts string) (Verb, error) {
 	return migrate(scripts, "migrate-cancel", "cancel")
+}
+
+// GuardTool is the template's view of the guard stack's IP bans and the owner's
+// actions on them: `status` and `lookup <ip>` (one JSON line each), `unban <ip|cidr>`,
+// `allow <ip|cidr> [days]`, `disallow <ip|cidr> [list]`. Where CrowdSec runs and how it
+// is driven is the template's business. Exit 0 done, 2 bad arguments, ExitGuardOff
+// when the guard is not running, 1 failed.
+const GuardTool = "tools/guard.sh"
+
+// ExitGuardOff is the guard tool's exit code while the guard stack is not running.
+const ExitGuardOff = 3
+
+// GuardAllowlists are the allowlists the owner may remove an entry from: their own,
+// and the one the box fills from SSO logins.
+var GuardAllowlists = []string{"nsl-owner", "nsl-sso"}
+
+// MaxGuardAllowDays bounds a timed allow; 0 is "for good".
+const MaxGuardAllowDays = 3650
+
+// guardValue validates an address (or, with ranges, a CIDR) and returns it in
+// canonical form, so only what netip prints ever reaches the argv.
+func guardValue(v string, ranges bool) (string, error) {
+	v = strings.TrimSpace(v)
+	if a, err := netip.ParseAddr(v); err == nil && a.Zone() == "" {
+		return a.Unmap().String(), nil
+	}
+	if ranges {
+		if p, err := netip.ParsePrefix(v); err == nil {
+			return p.Masked().String(), nil
+		}
+		return "", fmt.Errorf("invalid address or range %q", v)
+	}
+	return "", fmt.Errorf("invalid address %q", v)
+}
+
+func guard(scripts string, args ...string) (Verb, error) {
+	if err := checkRoot(scripts); err != nil {
+		return Verb{}, err
+	}
+	return Verb{Name: "guard-" + args[0], Argv: append([]string{"bash", path.Join(scripts, GuardTool)}, args...)}, nil
+}
+
+// GuardStatus reads the guard's state: this box's bans, allowlists, the fleet sync.
+func GuardStatus(scripts string) (Verb, error) {
+	return guard(scripts, "status")
+}
+
+// GuardLookup lists every ban that applies to one address, imported ones included.
+func GuardLookup(scripts, ip string) (Verb, error) {
+	v, err := guardValue(ip, false)
+	if err != nil {
+		return Verb{}, err
+	}
+	return guard(scripts, "lookup", v)
+}
+
+// GuardUnban deletes the bans on exactly that address or range.
+func GuardUnban(scripts, value string) (Verb, error) {
+	v, err := guardValue(value, true)
+	if err != nil {
+		return Verb{}, err
+	}
+	return guard(scripts, "unban", v)
+}
+
+// GuardAllow puts an address or range on the owner's allowlist, for days (0 = for good).
+func GuardAllow(scripts, value string, days int) (Verb, error) {
+	v, err := guardValue(value, true)
+	if err != nil {
+		return Verb{}, err
+	}
+	if days < 0 || days > MaxGuardAllowDays {
+		return Verb{}, fmt.Errorf("days must be 0 (for good) to %d", MaxGuardAllowDays)
+	}
+	return guard(scripts, "allow", v, strconv.Itoa(days))
+}
+
+// GuardDisallow removes an entry from one of GuardAllowlists.
+func GuardDisallow(scripts, value, list string) (Verb, error) {
+	v, err := guardValue(value, true)
+	if err != nil {
+		return Verb{}, err
+	}
+	if !slices.Contains(GuardAllowlists, list) {
+		return Verb{}, fmt.Errorf("unknown allowlist %q", list)
+	}
+	return guard(scripts, "disallow", v, list)
 }

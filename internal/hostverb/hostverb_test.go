@@ -205,3 +205,51 @@ func TestSetRoutingMode(t *testing.T) {
 		t.Error("bad scripts dir accepted")
 	}
 }
+
+func TestGuard(t *testing.T) {
+	const scripts = "/DATA/AppData/mesh/scripts"
+	argv := func(v Verb, err error) string {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.Join(v.Argv, " ")
+	}
+	tool := "bash " + scripts + "/" + GuardTool + " "
+	if got := argv(GuardStatus(scripts)); got != tool+"status" {
+		t.Errorf("status: %s", got)
+	}
+	// canonical forms only: netip prints what reaches the argv
+	if got := argv(GuardLookup(scripts, " 2A01:4F8:0:0::1 ")); got != tool+"lookup 2a01:4f8::1" {
+		t.Errorf("lookup: %s", got)
+	}
+	if got := argv(GuardUnban(scripts, "203.0.113.77/24")); got != tool+"unban 203.0.113.0/24" {
+		t.Errorf("unban: %s", got)
+	}
+	if got := argv(GuardAllow(scripts, "::ffff:198.51.100.7", 30)); got != tool+"allow 198.51.100.7 30" {
+		t.Errorf("allow: %s", got)
+	}
+	if got := argv(GuardDisallow(scripts, "2001:db8:1:2::/64", "nsl-sso")); got != tool+"disallow 2001:db8:1:2::/64 nsl-sso" {
+		t.Errorf("disallow: %s", got)
+	}
+	for _, bad := range []string{"", "1.2.3.4; rm -rf /", "$(id)", "1.2.3.4 5.6.7.8", "fe80::1%eth0", "-e", "host.example"} {
+		if _, err := GuardUnban(scripts, bad); err == nil {
+			t.Errorf("value %q accepted", bad)
+		}
+	}
+	if _, err := GuardLookup(scripts, "1.2.3.0/24"); err == nil {
+		t.Error("lookup of a range accepted")
+	}
+	if _, err := GuardAllow(scripts, "1.2.3.4", -1); err == nil {
+		t.Error("negative days accepted")
+	}
+	if _, err := GuardAllow(scripts, "1.2.3.4", MaxGuardAllowDays+1); err == nil {
+		t.Error("too many days accepted")
+	}
+	if _, err := GuardDisallow(scripts, "1.2.3.4", "other"); err == nil {
+		t.Error("unknown allowlist accepted")
+	}
+	if _, err := GuardStatus("relative"); err == nil {
+		t.Error("bad scripts root accepted")
+	}
+}

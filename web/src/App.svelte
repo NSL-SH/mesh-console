@@ -8,6 +8,7 @@
   import VerifyCertificate from './pages/VerifyCertificate.svelte'
   import Diagnostics from './pages/Diagnostics.svelte'
   import Migration from './pages/Migration.svelte'
+  import Protection from './pages/Protection.svelte'
 
   // A page with a parent is not in the menu; the menu highlights its parent.
   type Page = { path: string; label: string; component: Component; parent?: string }
@@ -17,6 +18,7 @@
     { path: '/update', label: 'Update', component: Update },
     { path: '/domain', label: 'Domain', component: Domain },
     { path: '/certificates', label: 'Certificates', component: Certificates },
+    { path: '/protection', label: 'Protection', component: Protection },
     { path: '/certificates/verify', label: 'Verify your certificate', component: VerifyCertificate, parent: '/certificates' },
     { path: '/diagnostics', label: 'Diagnostics', component: Diagnostics },
     { path: '/migration', label: 'Migration', component: Migration },
